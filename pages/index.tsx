@@ -28,9 +28,9 @@ const Home = (props): JSX.Element => {
           >
             {impressionSentences?.items?.map((el)=>{
               return (
-                <div style={{background:"grey"}}>
+                <div style={{background:"grey"}} key={el?.id || el?.title} >
                   <Link href={el?.clickUrl}>
-                    <div key={el?.title} className="card">
+                    <div className="card">
                         <>
                           <div className="close">x</div>
                           {el?.title}
