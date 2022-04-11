@@ -1,7 +1,7 @@
 import useEmblaCarousel, {
   EmblaOptionsType,
 } from 'embla-carousel-react'
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 
 /** types (Props) for carousel layout
   1. slidesToScroll => Group slides together. Drag interactions, dot navigation, and previous/next buttons are mapped to group slides into the given number.
@@ -13,32 +13,40 @@ import React, { useCallback, useEffect, useState } from "react"
   7. showSlideHandlers =>  To show/hide the prev/next buttons.
   8. containerId => Carousel container id required to calculate the width of child according to the carousel view port.
   9. showIndicators => To show/hide the indicators of selected and non selected index/item
+  10. showSlideHandlersOnHover => show handlers on mouse hover
+  11. handlersPosition => handle position of handlers
 */
+
+type handlerspositionType = 'center' | 'top-right' | 'bottom-left';
+type slidesAlignType = 'start' | 'center' | 'end';
 
 type CarouselLayoutTypes = {
   slidesToScroll:number,
   dragFree: boolean,
-  align: "start" | "center" | "end",
-  noOfItems: number,
-  items: React.ReactNode[],     
+  align: slidesAlignType,
+  noOfItems: number,   
   showProgressBar: boolean,
   showSlideHandlers: boolean,
   containerId: string,
-  showIndicators: boolean 
+  showIndicators: boolean,
+  showSlideHandlersOnHover: boolean,
+  handlersPosition: handlerspositionType // currently has center position only.
 }
 
 // carousel layout hoc
-const CarouselLayout = ({
+const CarouselLayout: React.FC<CarouselLayoutTypes> = ({
   slidesToScroll=1, // defalt values
   noOfItems=1,
   align="center",
   dragFree=false,
   showProgressBar=false,
   showSlideHandlers=false,
-  items,
+  children,
   containerId="carousel_id",
-  showIndicators=false
-}: CarouselLayoutTypes) => {
+  showIndicators=false,
+  showSlideHandlersOnHover=false,
+  handlersPosition='center'
+}) => {
     
     // options of useEmblaCarousel hook
     const options: EmblaOptionsType = {
@@ -103,6 +111,10 @@ const CarouselLayout = ({
     useEffect(()=>{
       const slidesArr: NodeListOf<ChildNode> = document.querySelector(`#${containerId}`)?.childNodes
       slidesArr?.forEach((el: HTMLElement)=>{
+          if(noOfItems <= 1){
+            el.style.flex = `0 0 100%`;
+            return;
+          };
           el.style.flex = `0 0 calc(${(100/noOfItems)}% - 10px)`;
       })
     }, [])
@@ -117,39 +129,54 @@ const CarouselLayout = ({
       </span>
     )) || null
 
+    // get handler position classname 
+    const slideHandlersPositionClassName = useMemo(()=>{
+      let className = {};
+      switch(handlersPosition){
+        case 'center':
+          className = {left: 'slide_handler_center_left', right: 'slide_handler_center_right'}
+          break;
+        default:
+          className = {left: 'slide_handler_center_left', right: 'slide_handler_center_right'}
+      }
+      return className
+    }, [handlersPosition])
+
+    // prev/next handlers
+    const renderHandlers =  showSlideHandlers && (<>
+          <button className={showSlideHandlersOnHover ? `display-none ${slideHandlersPositionClassName['left']}` : `${slideHandlersPositionClassName['left']}`} onClick={scrollPrev} disabled={!prevBtnEnabled}>{`<`}</button>
+          <button className={showSlideHandlersOnHover ? `display-none ${slideHandlersPositionClassName['right']}` : `${slideHandlersPositionClassName['right']}`} onClick={scrollNext} disabled={!nextBtnEnabled}>{`>`}</button>
+    </>) || null
+
+    // progress bar
+    const renderProgressBar = showProgressBar && (<>
+      <div className='progress-bar-container'>
+        <div className='progress-bar' style={{transform: `translateX(${scrollProgress}%)`}} />  
+      </div>
+      <div>{`${selectedIndex+1}/${scrollSnaps.length}`}</div>
+    </>)
+
     return (
-        <>
+        <div style={{position: "relative"}}>
 
           {/* items ( card items ) */}
-          <div className="embla3" ref={emblaRef}>
-            <div className="embla__container3" id={containerId}>
-              {items}
-            </div>
-          </div>
-
-          
-          <div style={{background: "#eee", display: "flex", justifyContent: "center", alignItems: "center"}}>
-            {/* prev and next button */}
-            {showSlideHandlers && <>
-              <button style={{fontSize: "20px"}} onClick={scrollPrev} disabled={!prevBtnEnabled}>{`<`}</button>
-              <button style={{fontSize: "20px"}} onClick={scrollNext} disabled={!nextBtnEnabled}>{`>`}</button>
-            </>}
-
-            {/* progress bar */}  
-            {showProgressBar && <>
-              <div className='progress-bar-container'>
-                <div className='progress-bar' style={{transform: `translateX(${scrollProgress}%)`}} />  
+          <div className='handleHover'>
+            <div className="embla3" ref={emblaRef}>
+              <div className="embla__container3" id={containerId}>
+                {children}
               </div>
-              <div>{`${selectedIndex+1}/${scrollSnaps.length}`}</div>
-            </>}
+            </div>
+            {renderHandlers}
           </div>
+
+          {renderProgressBar}
 
           {/* item indicators */}
           <div className='indicators'>
             {renderIndicators}
           </div>
           
-        </>
+        </div>
     )
 
 }
